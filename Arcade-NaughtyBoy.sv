@@ -379,7 +379,7 @@ naughty_boy naughty_boy
 	.clock_12(clk_sys),
 
 	.reset(reset),
-//	.pause(pause_cpu),
+	.pause(pause_cpu),
 
 
 	.dn_addr(ioctl_addr[15:0]),

@@ -13,6 +13,7 @@ port(
  clock_50     : in std_logic;
  clock_12     : in std_logic;
  reset        : in std_logic;
+ pause        : in std_logic;
  
  dn_addr      : in  std_logic_vector(15 downto 0);
  dn_data      : in  std_logic_vector(7 downto 0);
@@ -113,6 +114,10 @@ architecture struct of naughty_boy is
  signal tms3615_notes : std_logic_vector(11 downto 0) := (others =>'0');
  signal tms3615_clk   : std_logic := '0';
  signal tms3615_octave: std_logic_vector(1 downto 0) := (others =>'0');
+ signal tms3615_clk_gated : std_logic := '0';
+ signal tms3615_sys_gated : std_logic := '0';
+ signal vcnt_snd_gated    : std_logic := '0';
+ signal clock_12_snd_gated : std_logic := '0';
 
  signal melody  : std_logic_vector(11 downto 0) := (others =>'0');
  signal snd1    : std_logic_vector( 1 downto 0) := (others =>'0');
@@ -159,7 +164,7 @@ coin_n   <= not coin;
 buttons  <= player1_btns when player2 = '0' else player2_btns;
 
 -- ena_cpu
-cpu_ena <= '1' when hcnt_1r ='0' and hcnt(0) = '1' else '0';
+cpu_ena <= '1' when hcnt_1r ='0' and hcnt(0) = '1' and pause = '0' else '0';
 
 process (clock_12)
 begin
@@ -484,7 +489,7 @@ port map(
 ---- sound effect1
 effect1 : entity work.naughty_boy_effect1
 port map(
-clk12       => clock_12,
+clk12       => clock_12_snd_gated,
 trigger_B54 => sound_b(5 downto 4),
 snd         => snd1
 );
@@ -492,22 +497,22 @@ snd         => snd1
 ---- sound effect2
 effect2 : entity work.naughty_boy_effect2
 port map(
-clk12   => clock_12,
-clksnd  => vcnt(0),
+clk12   => clock_12_snd_gated,
+clksnd  => vcnt_snd_gated,
 divider => sound_a(3 downto 0),
 snd     => snd2
 );
 
 noise_gen : entity work.naughty_boy_noise
 port map(
- clk12    => clock_12,
+ clk12    => clock_12_snd_gated,
  trigger  => sound_a(4),
  noise    => noise
 );
 
 effect3 : entity work.naughty_boy_effect3
 port map(
- clk12      => clock_12,
+ clk12      => clock_12_snd_gated,
  trigger_C4 => sound_c(0),
  trigger_C5 => sound_c(1),
  trigger_A5 => sound_a(5),
@@ -518,7 +523,7 @@ port map(
 
 effect4 : entity work.naughty_boy_effect4
 port map(
- clk12      => clock_12,
+ clk12      => clock_12_snd_gated,
  trigger_A6 => sound_a(6),
  trigger_A7 => sound_a(7),
  noise      => noise,
@@ -533,10 +538,15 @@ tms3615_clk <= '0'     when tms3615_octave = "11" -- could not happen
 			else  hcnt(2) when tms3615_octave = "01"
 			else  hcnt(3) when tms3615_octave = "00";
 
+tms3615_clk_gated <= tms3615_clk and not pause;
+tms3615_sys_gated <= hcnt(0)     and not pause;
+vcnt_snd_gated    <= vcnt(0)     and not pause;
+clock_12_snd_gated <= clock_12 and not pause;
+
 tms3615ns : entity work.tms3615
 port map(
-	clk_sys => hcnt(0),
-	clk_snd => tms3615_clk,
+	clk_sys => tms3615_sys_gated,
+	clk_snd => tms3615_clk_gated,
 	trigger => '0'&tms3615_notes,
 	audio   => melody
 );
